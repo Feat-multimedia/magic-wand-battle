@@ -96,25 +96,35 @@ Application mobile de duel de sorciers en 1 contre 1, dans laquelle les joueurs 
 
 ## 🔧 Problèmes Techniques Identifiés
 
-### 1. 🎯 Reconnaissance Gestuelle (CRITIQUE)
-**Problème** : L'algorithme de comparaison des gestes est trop strict et donne des scores de 0%
-**Cause** : 
-- Comparaison directe des valeurs brutes accéléromètre/gyroscope
-- Pas de normalisation temporelle
-- Pas de filtrage du bruit des capteurs
-- Seuils inadaptés
+### 1. 🎯 Reconnaissance Gestuelle (EN COURS DE RÉSOLUTION)
+**🎉 AVANCÉES MAJEURES (26 Jan 2025)** :
+- ✅ **Erreur NaN/Infinity RÉSOLUE** - Fix division par zéro dans _resampleProfile()
+- ✅ **Fréquence capteurs CORRIGÉE** - 5.2Hz → 85.5Hz (samplingPeriod=10ms)
+- ✅ **Données optimisées** - 8 points → 108 points par geste (17x amélioration)
+- ✅ **App stable** - Plus de crashes en mode release iOS
+- ⚠️ **Reconnaissance fonctionnelle** - Scores > 0% mais précision à améliorer
 
-**Solutions tentées** :
-- ✅ Filtre passe-bas
-- ✅ Seuils adaptatifs  
+**Problème résiduel** : Algorithme de comparaison encore imprécis sur gestes similaires
+**Cause identifiée** : 
+- Normalisation des trajectoires perfectible
+- Pondération des critères à ajuster
+- Seuils de reconnaissance à optimiser (actuellement 40%)
+
+**Solutions appliquées** :
+- ✅ **Fix critique** : Division par zéro dans rééchantillonnage
+- ✅ **Haute fréquence iOS** : Capteurs forcés à 100Hz
+- ✅ **Tests device réel** : Validation sur iPhone en mode release
+- ✅ Filtre passe-bas  
+- ✅ Seuils adaptatifs
 - ✅ Pondération accéléromètre/gyroscope
 - ❌ Service avancé avec features temporelles (buggé)
 
-**Solution recommandée** :
-- Implémentation DTW (Dynamic Time Warping)
-- Normalisation des séquences temporelles
-- Extraction de features caractéristiques
-- Test avec mouvements très distincts (ligne vs cercle)
+**Actions restantes (27 Jan 2025)** :
+- **PRIORITÉ 1** : Affiner précision algorithme de comparaison
+- Test systématique gestes distincts (ligne/cercle/zigzag)
+- Ajustement seuils reconnaissance optimaux
+- Amélioration normalisation trajectoires
+- DTW (Dynamic Time Warping) si nécessaire
 
 ### 2. 📱 iOS Build (RÉSOLU)
 **Problème** : Erreur `-G` avec Xcode 16.4 + Firebase BoringSSL-GRPC
