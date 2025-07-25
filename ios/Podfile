@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-platform :ios, '12.0'
+platform :ios, '14.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -40,25 +40,38 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
       
-      # FIX SPÉCIFIQUE pour Xcode 16.4 + Firebase BoringSSL
-      if target.name.include?('BoringSSL') || target.name.include?('grpc') || target.name.include?('gRPC')
-        # Supprimer tous les flags problématiques pour BoringSSL/gRPC
-        config.build_settings.delete('GCC_OPTIMIZATION_LEVEL')
+      # 🔥 FIX ULTRA-AGRESSIF pour Xcode 16.4 + Firebase BoringSSL 🔥
+      if target.name.include?('BoringSSL') || target.name.include?('grpc') || target.name.include?('gRPC') || target.name.include?('Firebase')
+        puts "🔧 Fixing #{target.name} for Xcode 16.4 compatibility..."
+        
+        # Désactiver TOUTES les optimisations
         config.build_settings['GCC_OPTIMIZATION_LEVEL'] = '0'
         config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-Onone'
+        config.build_settings['ENABLE_BITCODE'] = 'NO'
+        config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'
         
-        # Supprimer le flag -G spécifiquement
-        ['OTHER_CFLAGS', 'OTHER_CPPFLAGS'].each do |key|
+        # Supprimer tous les flags de compilation problématiques
+        problematic_flags = ['-G', '-g', '-gdwarf-2', '-gdwarf-4', '-gline-tables-only']
+        
+        ['OTHER_CFLAGS', 'OTHER_CPPFLAGS', 'OTHER_SWIFT_FLAGS'].each do |key|
           if config.build_settings[key]
             if config.build_settings[key].is_a?(Array)
-              config.build_settings[key] = config.build_settings[key].reject { |flag| flag.to_s.strip == '-G' }
+              config.build_settings[key] = config.build_settings[key].reject { |flag| 
+                problematic_flags.any? { |bad_flag| flag.to_s.strip.start_with?(bad_flag) }
+              }
             elsif config.build_settings[key].is_a?(String)
-              config.build_settings[key] = config.build_settings[key].gsub(/\s*-G\s*/, ' ').strip
+              problematic_flags.each do |bad_flag|
+                config.build_settings[key] = config.build_settings[key].gsub(/\s*#{bad_flag}[^\s]*\s*/, ' ').strip
+              end
             end
           end
         end
+        
+        # Forcer les paramètres de debug simples
+        config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf'
+        config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
       end
       
       # Forcer les architectures pour tous les targets

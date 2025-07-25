@@ -12,6 +12,7 @@ import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/spell_management_screen.dart';
 import 'screens/admin/create_spell_screen.dart';
 import 'screens/game/duel_screen.dart';
+import 'screens/debug/gesture_debug_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/loading_screen.dart';
 
@@ -195,6 +196,10 @@ final GoRouter _router = GoRouter(
         final playerId = state.pathParameters['playerId'] ?? '';
         return DuelScreen(matchId: matchId, playerId: playerId);
       },
+    ),
+    GoRoute(
+      path: '/debug/gestures',
+      builder: (context, state) => const GestureDebugScreen(),
     ),
   ],
   refreshListenable: GoRouterRefreshStream(

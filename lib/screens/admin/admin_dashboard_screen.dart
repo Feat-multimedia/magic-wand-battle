@@ -181,6 +181,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         _buildAdminCard(
                           context,
+                          icon: Icons.bug_report,
+                          title: 'Debug Gestes',
+                          subtitle: 'Visualiser patterns',
+                          color: const Color(0xFFF59E0B),
+                          onTap: () => context.push('/debug/gestures'),
+                        ),
+                        _buildAdminCard(
+                          context,
                           icon: Icons.add_circle,
                           title: 'Créer Arène',
                           subtitle: 'Nouveau tournoi',

@@ -64,6 +64,6 @@
 	
 	<!-- Configuration pour éviter les problèmes de build iOS -->
 	<key>MinimumOSVersion</key>
-	<string>12.0</string>
+	<string>14.0</string>
 </dict>
 </plist>

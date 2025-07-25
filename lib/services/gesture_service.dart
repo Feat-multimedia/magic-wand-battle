@@ -15,10 +15,16 @@ class GestureService {
   static Function(GestureData)? _onGestureRecorded;
   static Function(int)? _onRecordingProgress;
 
+  // 🎨 NOUVELLES PROPRIÉTÉS POUR LA VISUALISATION
+  static Function(Point<double>)? _onPositionUpdate;
+  static Point<double> _currentPosition = const Point(200.0, 200.0);
+  static Point<double> _velocity = const Point(0.0, 0.0);
+
   /// Démarrer l'enregistrement d'un geste
   static Future<void> startRecording({
     required Function(GestureData) onGestureRecorded,
     Function(int)? onRecordingProgress,
+    Function(Point<double>)? onPositionUpdate, // 🎨 NOUVEAU
     int maxDurationMs = 5000, // 5 secondes max
   }) async {
     if (_isRecording) {
@@ -29,6 +35,11 @@ class GestureService {
     _recordingStartTime = DateTime.now();
     _onGestureRecorded = onGestureRecorded;
     _onRecordingProgress = onRecordingProgress;
+    _onPositionUpdate = onPositionUpdate; // 🎨 NOUVEAU
+    
+    // Réinitialiser la position pour la visualisation
+    _currentPosition = const Point(200.0, 200.0);
+    _velocity = const Point(0.0, 0.0);
     
     // Vider les anciennes données
     _accelerometerReadings.clear();
@@ -46,12 +57,19 @@ class GestureService {
             timestamp: timestamp,
           ));
           
+          // 🎨 MISE À JOUR DE LA POSITION POUR LA VISUALISATION
+          _updateVisualizationPosition(event.x, event.y);
+          
           // Notifier le progrès
           if (_recordingStartTime != null && _onRecordingProgress != null) {
             final elapsed = DateTime.now().difference(_recordingStartTime!).inMilliseconds;
-            _onRecordingProgress!(elapsed);
+            final progress = (elapsed / maxDurationMs * 100).clamp(0, 100).toInt();
+            _onRecordingProgress!(progress);
           }
         }
+      },
+      onError: (error) {
+        print('Erreur accéléromètre: $error');
       },
     );
 
@@ -67,14 +85,40 @@ class GestureService {
           ));
         }
       },
+      onError: (error) {
+        print('Erreur gyroscope: $error');
+      },
     );
 
-    // Arrêter automatiquement après la durée max
+    // Arrêt automatique après maxDurationMs
     Timer(Duration(milliseconds: maxDurationMs), () {
       if (_isRecording) {
         stopRecording();
       }
     });
+  }
+
+  // 🎨 NOUVELLE MÉTHODE POUR METTRE À JOUR LA POSITION VISUELLE
+  static void _updateVisualizationPosition(double accelX, double accelY) {
+    // Convertir l'accélération en mouvement visuel
+    // Facteur de scaling pour rendre le mouvement visible
+    const double scaleFactor = 10.0;
+    const double damping = 0.95; // Amortissement
+    
+    // Mettre à jour la vélocité basée sur l'accélération
+    _velocity = Point(
+      (_velocity.x + accelX * scaleFactor) * damping,
+      (_velocity.y + accelY * scaleFactor) * damping,
+    );
+    
+    // Mettre à jour la position
+    _currentPosition = Point(
+      (_currentPosition.x + _velocity.x).clamp(50.0, 350.0),
+      (_currentPosition.y + _velocity.y).clamp(50.0, 350.0),
+    );
+    
+    // Notifier la mise à jour de position
+    _onPositionUpdate?.call(_currentPosition);
   }
 
   /// Arrêter l'enregistrement
@@ -83,7 +127,7 @@ class GestureService {
 
     _isRecording = false;
     
-    // Arrêter l'écoute des capteurs
+    // Arrêter les abonnements
     _accelerometerSubscription?.cancel();
     _gyroscopeSubscription?.cancel();
     _accelerometerSubscription = null;
@@ -95,6 +139,8 @@ class GestureService {
         : 0;
     
     final threshold = _calculateThreshold();
+
+    print('📊 Geste enregistré: ${_accelerometerReadings.length} points accél, ${_gyroscopeReadings.length} points gyro');
 
     // Créer les données gestuelles
     final gestureData = GestureData(
@@ -110,6 +156,7 @@ class GestureService {
     // Nettoyer
     _onGestureRecorded = null;
     _onRecordingProgress = null;
+    _onPositionUpdate = null; // 🎨 NOUVEAU
     _recordingStartTime = null;
   }
 
@@ -122,8 +169,8 @@ class GestureService {
     int count = 0;
 
     for (int i = 1; i < _accelerometerReadings.length; i++) {
-      final current = _accelerometerReadings[i];
       final previous = _accelerometerReadings[i - 1];
+      final current = _accelerometerReadings[i];
       
       final deltaX = current.x - previous.x;
       final deltaY = current.y - previous.y;
@@ -146,6 +193,11 @@ class GestureService {
     if (!_isRecording || _recordingStartTime == null) return 0;
     return DateTime.now().difference(_recordingStartTime!).inMilliseconds;
   }
+
+  // 🎨 GETTERS POUR LA VISUALISATION
+  static List<AccelerometerReading> get currentAccelerometerReadings => List.from(_accelerometerReadings);
+  static List<GyroscopeReading> get currentGyroscopeReadings => List.from(_gyroscopeReadings);
+  static Point<double> get currentPosition => _currentPosition;
 
   /// Comparer deux gestes pour la reconnaissance
   static double compareGestures(GestureData recorded, GestureData target) {
@@ -178,15 +230,15 @@ class GestureService {
     
     if (gesture.accelerometerReadings.length <= targetSamples &&
         gesture.gyroscopeReadings.length <= targetSamples) {
-      return gesture;
+      return gesture; // Pas besoin de normaliser
     }
-
-    // Sous-échantillonner
-    final accStep = gesture.accelerometerReadings.length / targetSamples;
-    final gyroStep = gesture.gyroscopeReadings.length / targetSamples;
 
     final normalizedAcc = <AccelerometerReading>[];
     final normalizedGyro = <GyroscopeReading>[];
+
+    // Calculer les pas d'échantillonnage
+    final accStep = gesture.accelerometerReadings.length / targetSamples;
+    final gyroStep = gesture.gyroscopeReadings.length / targetSamples;
 
     for (int i = 0; i < targetSamples; i++) {
       final accIndex = (i * accStep).floor().clamp(0, gesture.accelerometerReadings.length - 1);
@@ -224,7 +276,9 @@ class GestureService {
 
     // Convertir en pourcentage de similarité (plus la différence est faible, plus la similarité est élevée)
     final averageDifference = totalDifference / (minLength * 3);
-    return max(0.0, 1.0 - (averageDifference / 10.0)); // Ajustable selon les tests
+    // 🔧 ULTRA tolérant : diviser par 50 pour commencer
+    print('  📊 Différence moyenne accéléromètre: ${averageDifference.toStringAsFixed(2)}');
+    return max(0.0, 1.0 - (averageDifference / 50.0));
   }
 
   /// Comparer les données de gyroscope
@@ -246,7 +300,9 @@ class GestureService {
     }
 
     final averageDifference = totalDifference / (minLength * 3);
-    return max(0.0, 1.0 - (averageDifference / 5.0)); // Gyroscope plus sensible
+    // 🔧 ULTRA tolérant : diviser par 25 pour le gyroscope aussi
+    print('  📊 Différence moyenne gyroscope: ${averageDifference.toStringAsFixed(2)}');
+    return max(0.0, 1.0 - (averageDifference / 25.0));
   }
 
   /// Nettoyer les ressources
@@ -258,5 +314,6 @@ class GestureService {
     _isRecording = false;
     _accelerometerReadings.clear();
     _gyroscopeReadings.clear();
+    _onPositionUpdate = null; // 🎨 NOUVEAU
   }
 } 
