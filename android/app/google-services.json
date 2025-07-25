@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "853224665647",
+    "project_id": "magic-wand-battle",
+    "storage_bucket": "magic-wand-battle.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853224665647:android:ae57b023f2e91bf6664cda",
+        "android_client_info": {
+          "package_name": "com.example.magic_wand_battle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQfzdXElLl-Hxv7h6JXVJRWyYPI7ni3YU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853224665647:android:5e30129bdde42270664cda",
+        "android_client_info": {
+          "package_name": "com.featmultimedia.magicwandbattle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQfzdXElLl-Hxv7h6JXVJRWyYPI7ni3YU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

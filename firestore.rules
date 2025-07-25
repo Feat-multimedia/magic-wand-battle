@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Fonction helper pour vérifier si l'utilisateur est authentifié
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Fonction helper pour vérifier si l'utilisateur est admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Fonction helper pour vérifier si c'est le propriétaire du document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Collection users
+    match /users/{userId} {
+      // Lecture : utilisateur connecté peut lire son profil ou admin peut tout lire
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Création : seulement lors de l'inscription (par l'utilisateur lui-même)
+      allow create: if isOwner(userId) && 
+                    request.resource.data.email == request.auth.token.email;
+      
+      // Mise à jour : utilisateur peut modifier son profil, admin peut tout modifier
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // Suppression : seulement admin
+      allow delete: if isAdmin();
+    }
+    
+    // Collection spells
+    match /spells/{spellId} {
+      // Lecture : tous les utilisateurs authentifiés
+      allow read: if isAuthenticated();
+      
+      // Écriture : seulement admin
+      allow write: if isAdmin();
+    }
+    
+    // Collection arenas
+    match /arenas/{arenaId} {
+      // Lecture : tous les utilisateurs authentifiés
+      allow read: if isAuthenticated();
+      
+      // Création : seulement admin
+      allow create: if isAdmin();
+      
+      // Mise à jour : seulement admin ou créateur de l'arène
+      allow update: if isAdmin() || 
+                    (isAuthenticated() && 
+                     resource.data.createdBy == /databases/$(database)/documents/users/$(request.auth.uid));
+      
+      // Suppression : seulement admin
+      allow delete: if isAdmin();
+    }
+    
+    // Collection matches
+    match /matches/{matchId} {
+      // Lecture : joueurs du match ou admin
+      allow read: if isAdmin() || 
+                  (isAuthenticated() && 
+                   (resource.data.player1 == /databases/$(database)/documents/users/$(request.auth.uid) ||
+                    resource.data.player2 == /databases/$(database)/documents/users/$(request.auth.uid)));
+      
+      // Écriture : seulement admin
+      allow write: if isAdmin();
+      
+      // Sous-collection rounds
+      match /rounds/{roundId} {
+        // Lecture : joueurs du match parent ou admin
+        allow read: if isAdmin() || 
+                    (isAuthenticated() && 
+                     (get(/databases/$(database)/documents/matches/$(matchId)).data.player1 == /databases/$(database)/documents/users/$(request.auth.uid) ||
+                      get(/databases/$(database)/documents/matches/$(matchId)).data.player2 == /databases/$(database)/documents/users/$(request.auth.uid)));
+        
+        // Écriture : seulement admin
+        allow write: if isAdmin();
+      }
+    }
+  }
+}

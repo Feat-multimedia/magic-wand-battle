@@ -1,0 +1,51 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "eur3",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "magic-wand-battle",
+          "appId": "1:853224665647:android:5e30129bdde42270664cda",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "magic-wand-battle",
+          "appId": "1:853224665647:ios:01914a54879a6577664cda",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "magic-wand-battle",
+          "configurations": {
+            "android": "1:853224665647:android:5e30129bdde42270664cda",
+            "ios": "1:853224665647:ios:01914a54879a6577664cda",
+            "web": "1:853224665647:web:d2c685a40cbc8bce664cda"
+          }
+        }
+      }
+    }
+  }
+}
