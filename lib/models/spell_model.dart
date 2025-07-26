@@ -6,6 +6,7 @@ class SpellModel {
   final GestureData gestureData;
   final String voiceKeyword;
   final String beats; // ID du sort que ce sort bat
+  final String? soundFileUrl; // 🆕 URL du fichier son uploadé
   final DateTime createdAt;
 
   SpellModel({
@@ -14,6 +15,7 @@ class SpellModel {
     required this.gestureData,
     required this.voiceKeyword,
     required this.beats,
+    this.soundFileUrl,
     required this.createdAt,
   });
 
@@ -26,6 +28,7 @@ class SpellModel {
       gestureData: GestureData.fromMap(data['gestureData'] ?? {}),
       voiceKeyword: data['voiceKeyword'] ?? '',
       beats: data['beats'] ?? '',
+      soundFileUrl: data['soundFileUrl'], // URL du son uploadé
       createdAt: (data['createdAt'] as Timestamp).toDate(),
     );
   }
@@ -36,6 +39,7 @@ class SpellModel {
       'gestureData': gestureData.toMap(),
       'voiceKeyword': voiceKeyword,
       'beats': beats,
+      'soundFileUrl': soundFileUrl, // URL du son uploadé
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -46,6 +50,7 @@ class SpellModel {
     GestureData? gestureData,
     String? voiceKeyword,
     String? beats,
+    String? soundFileUrl,
     DateTime? createdAt,
   }) {
     return SpellModel(
@@ -54,6 +59,7 @@ class SpellModel {
       gestureData: gestureData ?? this.gestureData,
       voiceKeyword: voiceKeyword ?? this.voiceKeyword,
       beats: beats ?? this.beats,
+      soundFileUrl: soundFileUrl ?? this.soundFileUrl,
       createdAt: createdAt ?? this.createdAt,
     );
   }

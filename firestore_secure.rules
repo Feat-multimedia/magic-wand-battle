@@ -20,8 +20,8 @@ service cloud.firestore {
     
     // Collection users
     match /users/{userId} {
-      // Lecture : utilisateur connecté peut lire son profil ou admin peut tout lire
-      allow read: if isOwner(userId) || isAdmin();
+      // Lecture : tous les utilisateurs authentifiés (pour statistiques et matchmaking)
+      allow read: if isAuthenticated();
       
       // Création : seulement lors de l'inscription (par l'utilisateur lui-même)
       allow create: if isOwner(userId) && 
@@ -60,6 +60,35 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
+    // Collection tournaments
+    match /tournaments/{tournamentId} {
+      // Lecture : tous les utilisateurs authentifiés peuvent voir les tournois
+      allow read: if isAuthenticated();
+      
+      // Écriture : seulement admin
+      allow write: if isAdmin();
+    }
+    
+    // Collection brackets
+    match /brackets/{bracketId} {
+      // Lecture : tous les utilisateurs authentifiés peuvent voir les brackets
+      allow read: if isAuthenticated();
+      
+      // Écriture : seulement admin
+      allow write: if isAdmin();
+    }
+    
+    // Collection rounds (niveau racine - utilisée par GameMaster)
+    match /rounds/{roundId} {
+      // Lecture : tous les utilisateurs authentifiés (pour statistiques et game master)
+      allow read: if isAuthenticated();
+      
+      // Écriture : joueurs peuvent créer leurs propres rounds, admin peut tout
+      allow create: if isAuthenticated() && 
+                    resource.data.playerId == /databases/$(database)/documents/users/$(request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
     // Collection matches
     match /matches/{matchId} {
       // Lecture : joueurs du match ou admin

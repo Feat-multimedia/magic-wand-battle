@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/spell_model.dart';
 import '../../services/spell_service.dart';
-import '../../services/gesture_service.dart';
+
+import '../../services/gesture_pattern_service.dart';
+import '../../services/audio_service.dart';
+import '../../services/sound_service.dart';
+import '../../utils/logger.dart';
 
 class CreateSpellScreen extends StatefulWidget {
   final String? spellId; // Si non null, c'est une édition
@@ -22,6 +26,7 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
   bool _isSaving = false;
   GestureData? _recordedGesture;
   int _recordingProgress = 0;
+  String? _selectedSoundId; // 🆕 ID du son sélectionné
   
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -51,7 +56,7 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
     _nameController.dispose();
     _voiceController.dispose();
     _pulseController.dispose();
-    GestureService.dispose();
+    GesturePatternService.dispose();
     super.dispose();
   }
 
@@ -65,6 +70,7 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
           _nameController.text = spell.name;
           _voiceController.text = spell.voiceKeyword;
           _recordedGesture = spell.gestureData;
+          _selectedSoundId = spell.soundFileUrl; // 🆕 Charger l'URL du son
         });
       }
     } catch (e) {
@@ -79,7 +85,7 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
   }
 
   Future<void> _startRecording() async {
-    if (GestureService.isRecording) return;
+    if (GesturePatternService.isRecording) return;
 
     setState(() {
       _recordingProgress = 0;
@@ -89,7 +95,7 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
     _pulseController.repeat(reverse: true);
 
     try {
-      await GestureService.startRecording(
+      await GesturePatternService.startRecording(
         onGestureRecorded: (gestureData) {
           setState(() {
             _recordedGesture = gestureData;
@@ -124,8 +130,8 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
   }
 
   void _stopRecording() {
-    if (GestureService.isRecording) {
-      GestureService.stopRecording();
+    if (GesturePatternService.isRecording) {
+      GesturePatternService.stopRecording();
       _pulseController.stop();
       _pulseController.reset();
     }
@@ -152,6 +158,7 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
         gestureData: _recordedGesture!,
         voiceKeyword: _voiceController.text.trim(),
         beats: _existingSpell?.beats ?? '', // Conserver la relation existante
+        soundFileUrl: _selectedSoundId, // 🆕 Ajouter l'URL du son
         createdAt: _existingSpell?.createdAt ?? DateTime.now(),
       );
 
@@ -193,6 +200,16 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
     }
   }
 
+  Future<String?> _getSoundUrlById(String soundId) async {
+    try {
+      final sound = await SoundService.getSoundById(soundId);
+      return sound?.downloadUrl;
+    } catch (e) {
+      Logger.error(' Erreur récupération URL son: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = _existingSpell != null;
@@ -230,6 +247,10 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
                   
                   // Informations du sort
                   _buildSpellInfoSection(),
+                  const SizedBox(height: 24),
+                  
+                  // 🆕 Section sélection du son
+                  _buildSoundSelectionSection(),
                   const SizedBox(height: 32),
                   
                   // Section enregistrement gestuel
@@ -389,7 +410,7 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
               animation: _pulseAnimation,
               builder: (context, child) {
                 return Transform.scale(
-                  scale: GestureService.isRecording ? _pulseAnimation.value : 1.0,
+                  scale: GesturePatternService.isRecording ? _pulseAnimation.value : 1.0,
                   child: GestureDetector(
                     onTapDown: (_) => _startRecording(),
                     onTapUp: (_) => _stopRecording(),
@@ -400,13 +421,13 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
-                          colors: GestureService.isRecording
+                          colors: GesturePatternService.isRecording
                               ? [Colors.red.shade400, Colors.red.shade600]
                               : [Colors.blue.shade400, Colors.blue.shade600],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: (GestureService.isRecording ? Colors.red : Colors.blue)
+                            color: (GesturePatternService.isRecording ? Colors.red : Colors.blue)
                                 .withValues(alpha: 0.3),
                             blurRadius: 20,
                             spreadRadius: 5,
@@ -414,7 +435,7 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
                         ],
                       ),
                       child: Icon(
-                        GestureService.isRecording ? Icons.stop : Icons.fiber_manual_record,
+                        GesturePatternService.isRecording ? Icons.stop : Icons.fiber_manual_record,
                         color: Colors.white,
                         size: 40,
                       ),
@@ -431,15 +452,15 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
             child: Column(
               children: [
                 Text(
-                  GestureService.isRecording 
+                  GesturePatternService.isRecording 
                       ? 'Effectuez votre mouvement...'
                       : 'Maintenez pour enregistrer',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: GestureService.isRecording ? Colors.red : Colors.blue,
+                    color: GesturePatternService.isRecording ? Colors.red : Colors.blue,
                   ),
                 ),
-                if (GestureService.isRecording) ...[
+                if (GesturePatternService.isRecording) ...[
                   const SizedBox(height: 8),
                   Text(
                     '${(_recordingProgress / 1000).toStringAsFixed(1)}s / 5.0s',
@@ -530,6 +551,209 @@ class _CreateSpellScreenState extends State<CreateSpellScreen> with TickerProvid
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSoundSelectionSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.audiotrack,
+                  color: Colors.deepPurple,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '🎵 Son du Sort',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1E293B),
+                      ),
+                    ),
+                    Text(
+                      'Choisissez un son uploadé ou laissez vide pour un son générique',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => context.go('/admin/sounds'),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Gérer'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.deepPurple,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          // Liste des sons disponibles
+          StreamBuilder<List<SoundFile>>(
+            stream: SoundService.getSoundsStream(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              final sounds = snapshot.data ?? [];
+              
+              return Column(
+                children: [
+                  // Option "Aucun son spécifique"
+                  _buildSoundOption(
+                    isSelected: _selectedSoundId == null,
+                    title: '🔇 Aucun son spécifique',
+                    subtitle: 'Utiliser le son générique basé sur le nom',
+                    onTap: () {
+                      setState(() {
+                        _selectedSoundId = null;
+                      });
+                    },
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Sons uploadés disponibles
+                  if (sounds.isEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.library_music, color: Colors.grey, size: 32),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Aucun son uploadé',
+                            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Allez dans "Gestion Sons" pour uploader des fichiers audio',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    ...sounds.map((sound) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _buildSoundOption(
+                        isSelected: _selectedSoundId == sound.id,
+                        title: '🎵 ${sound.name}',
+                        subtitle: '${sound.originalFileName} • ${SoundService.formatFileSize(sound.fileSizeBytes)}',
+                                                 onTap: () {
+                           setState(() {
+                             _selectedSoundId = sound.id;
+                           });
+                           // Jouer un aperçu du vrai son
+                           AudioService().playSoundFromUrl(sound.downloadUrl);
+                         },
+                      ),
+                    )),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSoundOption({
+    required bool isSelected,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? Colors.deepPurple.withValues(alpha: 0.1)
+              : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected 
+                ? Colors.deepPurple
+                : const Color(0xFFE2E8F0),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              color: isSelected ? Colors.deepPurple : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected ? Colors.deepPurple : const Color(0xFF1E293B),
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isSelected 
+                          ? Colors.deepPurple.withValues(alpha: 0.7)
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 } 

@@ -4,29 +4,38 @@ class UserModel {
   final String id;
   final String displayName;
   final String email;
+  final String? photoURL;
   final bool isAdmin;
   final UserStats stats;
   final DateTime createdAt;
 
-  UserModel({
+  const UserModel({
     required this.id,
     required this.displayName,
     required this.email,
+    this.photoURL,
     required this.isAdmin,
     required this.stats,
     required this.createdAt,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    
+    final data = doc.data() as Map<String, dynamic>;
     return UserModel(
       id: doc.id,
       displayName: data['displayName'] ?? '',
       email: data['email'] ?? '',
+      photoURL: data['photoURL'],
       isAdmin: data['isAdmin'] ?? false,
-      stats: UserStats.fromMap(data['stats'] ?? {}),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      stats: UserStats(
+        matchsPlayed: data['stats']?['matchsPlayed'] ?? 0,
+        spellsUsed: data['stats']?['spellsUsed'] != null
+            ? Map<String, int>.from(data['stats']['spellsUsed'])
+            : {},
+        totalPoints: (data['stats']?['totalPoints'] ?? 0.0).toDouble(),
+        successRate: (data['stats']?['successRate'] ?? 0.0).toDouble(),
+      ),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -34,8 +43,14 @@ class UserModel {
     return {
       'displayName': displayName,
       'email': email,
+      'photoURL': photoURL,
       'isAdmin': isAdmin,
-      'stats': stats.toMap(),
+      'stats': {
+        'matchsPlayed': stats.matchsPlayed,
+        'spellsUsed': stats.spellsUsed,
+        'totalPoints': stats.totalPoints,
+        'successRate': stats.successRate,
+      },
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }

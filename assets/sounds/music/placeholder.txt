@@ -1,0 +1,9 @@
+🎼 MUSIQUE - Magic Wand Battle
+
+Placez ici les fichiers de musique de fond :
+
+🎵 battle_theme.mp3 - Thème musical principal pour les duels
+
+Format recommandé : MP3, boucle parfaite, durée 2-5 minutes, volume maîtrisé
+
+La musique doit être envoûtante et épique, adaptée aux duels de magie ! 

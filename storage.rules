@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// 🔐 Règles de sécurité Firebase Storage
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // 🧙‍♂️ Photos de profil utilisateur
+    match /profile_photos/{userId} {
+      // Seul le propriétaire peut uploader/modifier sa photo
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024 // Max 5MB
+                   && request.resource.contentType.matches('image/.*'); // Images seulement
+      
+      // Tout le monde peut voir les photos de profil
+      allow read: if request.auth != null;
+    }
+    
+    // 🎵 Fichiers audio des sorts (existant)
+    match /sounds/{soundId} {
+      // Lecture : tous les utilisateurs authentifiés
+      allow read: if request.auth != null;
+      
+      // Écriture : seulement les admins + vérifications fichiers
+      allow write: if request.auth != null && 
+                   get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true
+                   && request.resource.size < 10 * 1024 * 1024 // Max 10MB
+                   && request.resource.contentType.matches('audio/.*'); // Audio seulement
+    }
+    
+    // 🚫 Toutes les autres ressources sont interdites par défaut
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+} 

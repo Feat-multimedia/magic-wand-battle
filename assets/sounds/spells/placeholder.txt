@@ -1,0 +1,14 @@
+🎵 SONS DE SORTS - Magic Wand Battle
+
+Placez ici les fichiers audio des sorts :
+
+🔥 fireball.mp3 - Son d'attaque de feu
+❄️ ice_blast.mp3 - Son d'attaque de glace  
+⚡ lightning.mp3 - Son d'attaque de foudre
+💚 heal.mp3 - Son de soin
+🛡️ shield.mp3 - Son de bouclier
+☄️ meteor.mp3 - Son de météore
+
+Format recommandé : MP3, durée 1-3 secondes, qualité 128kbps
+
+En développement, les sons de substitution utilisent les tonalités système. 

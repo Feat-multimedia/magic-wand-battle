@@ -2,26 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RoundModel {
   final String id;
-  final int index;
-  final String player1Spell;
-  final String player2Spell;
-  final String? player1Voice;
-  final String? player2Voice;
-  final double player1Bonus;
-  final double player2Bonus;
-  final DocumentReference? winner;
+  final DocumentReference matchId;
+  final DocumentReference playerId;
+  final String spellCast;
+  final double gestureAccuracy;
+  final bool voiceBonus;
+  final double totalScore;
   final DateTime timestamp;
 
   RoundModel({
     required this.id,
-    required this.index,
-    required this.player1Spell,
-    required this.player2Spell,
-    this.player1Voice,
-    this.player2Voice,
-    required this.player1Bonus,
-    required this.player2Bonus,
-    this.winner,
+    required this.matchId,
+    required this.playerId,
+    required this.spellCast,
+    required this.gestureAccuracy,
+    required this.voiceBonus,
+    required this.totalScore,
     required this.timestamp,
   });
 
@@ -30,64 +26,77 @@ class RoundModel {
     
     return RoundModel(
       id: doc.id,
-      index: data['index'] ?? 0,
-      player1Spell: data['player1Spell'] ?? '',
-      player2Spell: data['player2Spell'] ?? '',
-      player1Voice: data['player1Voice'],
-      player2Voice: data['player2Voice'],
-      player1Bonus: (data['player1Bonus'] ?? 0.0).toDouble(),
-      player2Bonus: (data['player2Bonus'] ?? 0.0).toDouble(),
-      winner: data['winner'] as DocumentReference?,
+      matchId: data['matchId'] as DocumentReference,
+      playerId: data['playerId'] as DocumentReference,
+      spellCast: data['spellCast'] ?? '',
+      gestureAccuracy: (data['gestureAccuracy'] ?? 0.0).toDouble(),
+      voiceBonus: data['voiceBonus'] ?? false,
+      totalScore: (data['totalScore'] ?? 0.0).toDouble(),
       timestamp: (data['timestamp'] as Timestamp).toDate(),
     );
   }
 
   Map<String, dynamic> toFirestore() {
     return {
-      'index': index,
-      'player1Spell': player1Spell,
-      'player2Spell': player2Spell,
-      'player1Voice': player1Voice,
-      'player2Voice': player2Voice,
-      'player1Bonus': player1Bonus,
-      'player2Bonus': player2Bonus,
-      'winner': winner,
+      'matchId': matchId,
+      'playerId': playerId,
+      'spellCast': spellCast,
+      'gestureAccuracy': gestureAccuracy,
+      'voiceBonus': voiceBonus,
+      'totalScore': totalScore,
       'timestamp': Timestamp.fromDate(timestamp),
     };
   }
 
   RoundModel copyWith({
     String? id,
-    int? index,
-    String? player1Spell,
-    String? player2Spell,
-    String? player1Voice,
-    String? player2Voice,
-    double? player1Bonus,
-    double? player2Bonus,
-    DocumentReference? winner,
+    DocumentReference? matchId,
+    DocumentReference? playerId,
+    String? spellCast,
+    double? gestureAccuracy,
+    bool? voiceBonus,
+    double? totalScore,
     DateTime? timestamp,
   }) {
     return RoundModel(
       id: id ?? this.id,
-      index: index ?? this.index,
-      player1Spell: player1Spell ?? this.player1Spell,
-      player2Spell: player2Spell ?? this.player2Spell,
-      player1Voice: player1Voice ?? this.player1Voice,
-      player2Voice: player2Voice ?? this.player2Voice,
-      player1Bonus: player1Bonus ?? this.player1Bonus,
-      player2Bonus: player2Bonus ?? this.player2Bonus,
-      winner: winner ?? this.winner,
+      matchId: matchId ?? this.matchId,
+      playerId: playerId ?? this.playerId,
+      spellCast: spellCast ?? this.spellCast,
+      gestureAccuracy: gestureAccuracy ?? this.gestureAccuracy,
+      voiceBonus: voiceBonus ?? this.voiceBonus,
+      totalScore: totalScore ?? this.totalScore,
       timestamp: timestamp ?? this.timestamp,
     );
   }
 
-  double get player1TotalPoints => 1.0 + player1Bonus;
-  double get player2TotalPoints => 1.0 + player2Bonus;
-  
-  bool get isDraw => winner == null;
-  bool get hasWinner => winner != null;
-  
-  bool get player1HasVoiceBonus => player1Voice != null && player1Voice!.isNotEmpty;
-  bool get player2HasVoiceBonus => player2Voice != null && player2Voice!.isNotEmpty;
+  /// Calculer le score total basé sur l'exactitude du geste et le bonus vocal
+  static double calculateScore(double gestureAccuracy, bool voiceBonus) {
+    double baseScore = 1.0; // Score de base pour un sort réussi
+    double gestureBonus = voiceBonus ? 0.5 : 0.0; // Bonus gestuel (ex-vocal)
+    
+    return baseScore + gestureBonus;
+  }
+
+  /// Créer un round depuis les résultats du duel
+  static RoundModel fromDuelResult({
+    required String matchId,
+    required String playerId,
+    required String spellCast,
+    required double gestureAccuracy,
+    required bool gestureBonus,
+  }) {
+    final totalScore = calculateScore(gestureAccuracy, gestureBonus);
+    
+    return RoundModel(
+      id: '', // Sera généré par Firestore
+      matchId: FirebaseFirestore.instance.collection('matches').doc(matchId),
+      playerId: FirebaseFirestore.instance.collection('users').doc(playerId),
+      spellCast: spellCast,
+      gestureAccuracy: gestureAccuracy,
+      voiceBonus: gestureBonus,
+      totalScore: totalScore,
+      timestamp: DateTime.now(),
+    );
+  }
 } 

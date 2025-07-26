@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_service.dart';
 import '../models/models.dart';
 import '../constants/app_constants.dart';
+import '../utils/logger.dart';
 
 class AuthService {
   static final FirebaseAuth _auth = FirebaseService.auth;
@@ -125,18 +126,33 @@ class AuthService {
         .map((doc) => doc.exists ? UserModel.fromFirestore(doc) : null);
   }
 
-  /// Mettre à jour le profil utilisateur
-  static Future<void> updateUserProfile(UserModel userModel) async {
-    final user = currentUser;
-    if (user == null) throw Exception('Aucun utilisateur connecté');
-
+  /// 📝 **Mettre à jour le profil utilisateur**
+  static Future<bool> updateUserProfile({
+    String? displayName,
+    String? photoURL,
+  }) async {
     try {
-      await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(user.uid)
-          .update(userModel.toFirestore());
+      final user = _auth.currentUser;
+      if (user == null) return false;
+
+      // Mise à jour dans Firebase Auth
+      await user.updateDisplayName(displayName);
+      if (photoURL != null) {
+        await user.updatePhotoURL(photoURL);
+      }
+
+      // Mise à jour dans Firestore
+      await _firestore.collection(AppConstants.usersCollection).doc(user.uid).update({
+        if (displayName != null) 'displayName': displayName,
+        if (photoURL != null) 'photoURL': photoURL,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      Logger.success('Profil utilisateur mis à jour');
+      return true;
     } catch (e) {
-      throw Exception('Erreur de mise à jour du profil: $e');
+      Logger.error('Erreur mise à jour profil', error: e);
+      return false;
     }
   }
 

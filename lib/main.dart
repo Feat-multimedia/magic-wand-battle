@@ -1,24 +1,50 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
-import 'services/firebase_service.dart';
+import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
-import 'constants/app_constants.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
-import 'screens/admin/spell_management_screen.dart';
 import 'screens/admin/create_spell_screen.dart';
-import 'screens/game/duel_screen.dart';
+import 'screens/admin/spell_management_screen.dart';
+import 'screens/admin/firebase_setup_screen.dart';
 import 'screens/debug/gesture_debug_screen.dart';
+import 'screens/admin/arena_management_screen.dart';
+import 'screens/admin/tournament_management_screen.dart';
+import 'screens/tournaments/tournament_list_screen.dart';
+import 'screens/tournaments/bracket_viewer_screen.dart';
+import 'screens/tournaments/tournament_details_screen.dart';
+import 'screens/tournaments/tournament_results_screen.dart';
+import 'screens/admin/sound_management_screen.dart';
+import 'screens/admin/game_master_screen.dart';
+import 'screens/admin/projection_screen.dart';
+import 'screens/profile/leaderboard_screen.dart';
+import 'screens/game/duel_screen.dart';
+import 'services/notification_service.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/loading_screen.dart';
+import 'screens/tournaments/live_tournament_screen.dart';
+import 'screens/profile/edit_profile_screen.dart';
+
+// Clé globale pour la navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await FirebaseService.initialize();
+  
+  // Initialiser Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  
+  // Initialiser les notifications (seulement sur mobile)
+  if (!kIsWeb) {
+    NotificationService.setGlobalNavigatorKey(navigatorKey);
+    await NotificationService().initialize();
+  }
+  
   runApp(const MagicWandBattleApp());
 }
 
@@ -27,110 +53,15 @@ class MagicWandBattleApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-      ],
-      child: Consumer<AuthProvider>(
-        builder: (context, authProvider, child) {
-          // Afficher l'écran de chargement tant que Firebase n'est pas initialisé
-          if (!authProvider.isInitialized) {
-            return MaterialApp(
-              title: AppConstants.appName,
-              theme: _buildTheme(),
-              home: const LoadingScreen(),
-              debugShowCheckedModeBanner: false,
-            );
-          }
-          
-          // Une fois initialisé, utiliser le router normal
-          return MaterialApp.router(
-            title: AppConstants.appName,
-            theme: _buildTheme(),
-            routerConfig: _router,
-            debugShowCheckedModeBanner: false,
-          );
-        },
-      ),
-    );
-  }
-
-  ThemeData _buildTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF3B82F6), // Bleu moderne
-        brightness: Brightness.light,
-      ).copyWith(
-        primary: const Color(0xFF3B82F6), // Bleu principal
-        secondary: const Color(0xFF10B981), // Vert émeraude
-        tertiary: const Color(0xFF8B5CF6), // Violet accent
-        surface: const Color(0xFFFFFFFF), // Blanc pur
-        surfaceContainerHighest: const Color(0xFFF8FAFC), // Gris ultra-clair
-        onSurface: const Color(0xFF0F172A), // Texte très sombre
-      ),
-      scaffoldBackgroundColor: const Color(0xFFFAFAFA), // Fond ultra-clair
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFFFFFFF),
-        foregroundColor: Color(0xFF0F172A),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        centerTitle: true,
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        shadowColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        color: const Color(0xFFFFFFFF),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(
-            color: Color(0xFFE2E8F0),
-            width: 1,
-          ),
-        ),
-        margin: EdgeInsets.zero,
-      ),
-      textTheme: const TextTheme(
-        headlineLarge: TextStyle(
-          color: Color(0xFF0F172A),
-          fontWeight: FontWeight.w800,
-          fontSize: 32,
-          letterSpacing: -0.5,
-        ),
-        headlineMedium: TextStyle(
-          color: Color(0xFF0F172A),
-          fontWeight: FontWeight.w700,
-          fontSize: 24,
-          letterSpacing: -0.25,
-        ),
-        headlineSmall: TextStyle(
-          color: Color(0xFF1E293B),
-          fontWeight: FontWeight.w600,
-          fontSize: 20,
-        ),
-        bodyLarge: TextStyle(
-          color: Color(0xFF334155),
-          fontWeight: FontWeight.w500,
-          fontSize: 16,
-        ),
-        bodyMedium: TextStyle(
-          color: Color(0xFF64748B),
-          fontSize: 14,
-        ),
-        bodySmall: TextStyle(
-          color: Color(0xFF94A3B8),
-          fontSize: 12,
+    return ChangeNotifierProvider(
+      create: (context) => AuthProvider(),
+      child: MaterialApp.router(
+        title: 'Magic Wand Battle',
+        debugShowCheckedModeBanner: false,
+        routerConfig: _router,
+        theme: ThemeData(
+          primarySwatch: Colors.purple,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
       ),
     );
@@ -138,40 +69,22 @@ class MagicWandBattleApp extends StatelessWidget {
 }
 
 final GoRouter _router = GoRouter(
-  initialLocation: AppConstants.loginRoute,
-  redirect: (context, state) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final isLoggedIn = authProvider.isAuthenticated;
-    final isLoginPage = state.fullPath == AppConstants.loginRoute;
-
-    // Si pas connecté et pas sur la page de login, rediriger vers login
-    if (!isLoggedIn && !isLoginPage) {
-      return AppConstants.loginRoute;
-    }
-
-    // Si connecté et sur la page de login, rediriger vers home
-    if (isLoggedIn && isLoginPage) {
-      return AppConstants.homeRoute;
-    }
-
-    return null;
-  },
-
+  initialLocation: '/',
   routes: [
     GoRoute(
-      path: AppConstants.loginRoute,
+      path: '/',
+      builder: (context, state) => const LoadingScreen(),
+    ),
+    GoRoute(
+      path: '/login',
       builder: (context, state) => const LoginScreen(),
     ),
     GoRoute(
-      path: AppConstants.homeRoute,
+      path: '/home',
       builder: (context, state) => const HomeScreen(),
     ),
     GoRoute(
-      path: AppConstants.profileRoute,
-      builder: (context, state) => const ProfileScreen(),
-    ),
-    GoRoute(
-      path: AppConstants.adminRoute,
+      path: '/admin',
       builder: (context, state) => const AdminDashboardScreen(),
     ),
     GoRoute(
@@ -183,28 +96,101 @@ final GoRouter _router = GoRouter(
       builder: (context, state) => const CreateSpellScreen(),
     ),
     GoRoute(
-      path: '/admin/spells/edit/:spellId',
+      path: '/admin/firebase-setup',
+      builder: (context, state) => const FirebaseSetupScreen(),
+    ),
+    GoRoute(
+      path: '/admin/arenas',
+      builder: (context, state) => const ArenaManagementScreen(),
+    ),
+    GoRoute(
+      path: '/admin/tournaments',
+      builder: (context, state) => const TournamentManagementScreen(),
+    ),
+    GoRoute(
+      path: '/tournaments',
+      builder: (context, state) => const TournamentListScreen(),
+    ),
+    GoRoute(
+      path: '/tournaments/:id/bracket',
       builder: (context, state) {
-        final spellId = state.pathParameters['spellId'];
-        return CreateSpellScreen(spellId: spellId);
+        final tournamentId = state.pathParameters['id']!;
+        return BracketViewerScreen(tournamentId: tournamentId);
       },
     ),
     GoRoute(
-      path: '/duel/:matchId/:playerId',
+      path: '/tournaments/:id/live',
       builder: (context, state) {
-        final matchId = state.pathParameters['matchId'] ?? '';
-        final playerId = state.pathParameters['playerId'] ?? '';
+        final tournamentId = state.pathParameters['id']!;
+        return LiveTournamentScreen(tournamentId: tournamentId);
+      },
+    ),
+    GoRoute(
+      path: '/tournaments/:id/details',
+      builder: (context, state) {
+        final tournamentId = state.pathParameters['id']!;
+        return TournamentDetailsScreen(tournamentId: tournamentId);
+      },
+    ),
+    GoRoute(
+      path: '/tournaments/:id/results',
+      builder: (context, state) {
+        final tournamentId = state.pathParameters['id']!;
+        return TournamentResultsScreen(tournamentId: tournamentId);
+      },
+    ),
+    GoRoute(
+      path: '/admin/sounds',
+      builder: (context, state) => const SoundManagementScreen(),
+    ),
+    GoRoute(
+      path: '/admin/game-master',
+      builder: (context, state) => const GameMasterScreen(),
+    ),
+    GoRoute(
+      path: '/projection',
+      builder: (context, state) => const ProjectionScreen(),
+    ),
+    GoRoute(
+      path: '/projection/:matchId',
+      builder: (context, state) {
+        final matchId = state.pathParameters['matchId']!;
+        return ProjectionScreen(specificMatchId: matchId);
+      },
+    ),
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: '/profile/edit',
+      builder: (context, state) => const EditProfileScreen(),
+    ),
+    GoRoute(
+      path: '/leaderboard',
+      builder: (context, state) => const LeaderboardScreen(),
+    ),
+    GoRoute(
+      path: '/game/duel/:matchId/:playerId',
+      builder: (context, state) {
+        final matchId = state.pathParameters['matchId']!;
+        final playerId = state.pathParameters['playerId']!;
         return DuelScreen(matchId: matchId, playerId: playerId);
       },
+    ),
+    GoRoute(
+      path: '/duel/training/solo',
+      builder: (context, state) => const DuelScreen(matchId: 'training', playerId: 'solo'),
+    ),
+    GoRoute(
+      path: '/training',
+      builder: (context, state) => const DuelScreen(matchId: 'training', playerId: 'solo'),
     ),
     GoRoute(
       path: '/debug/gestures',
       builder: (context, state) => const GestureDebugScreen(),
     ),
   ],
-  refreshListenable: GoRouterRefreshStream(
-    FirebaseService.authStateChanges,
-  ),
 );
 
 class GoRouterRefreshStream extends ChangeNotifier {

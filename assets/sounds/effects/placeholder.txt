@@ -1,0 +1,13 @@
+🎯 EFFETS SONORES - Magic Wand Battle
+
+Placez ici les fichiers audio des effets :
+
+✅ spell_success.mp3 - Son de réussite de sort
+❌ spell_fail.mp3 - Son d'échec de sort
+🏆 victory.mp3 - Son de victoire
+😔 defeat.mp3 - Son de défaite
+🎯 spell_cast.mp3 - Son générique de lancement
+🚀 duel_start.mp3 - Son de début de duel
+⏰ countdown.mp3 - Son de compte à rebours
+
+Format recommandé : MP3, durée 1-5 secondes 

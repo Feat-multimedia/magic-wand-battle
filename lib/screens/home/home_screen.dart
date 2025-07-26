@@ -3,9 +3,47 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/arena_service.dart';
+import '../../models/match_model.dart';
 
-class HomeScreen extends StatelessWidget {
+import '../../utils/logger.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<MatchModel> _playerMatches = [];
+  bool _isLoadingMatches = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlayerMatches();
+  }
+
+  Future<void> _loadPlayerMatches() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.userProfile?.id;
+    
+    if (userId == null) return;
+
+    setState(() => _isLoadingMatches = true);
+
+    try {
+      final matches = await ArenaService.getActiveMatchesForPlayer(userId);
+      setState(() {
+        _playerMatches = matches;
+        _isLoadingMatches = false;
+      });
+    } catch (e) {
+      Logger.error(' Erreur chargement matchs: $e');
+      setState(() => _isLoadingMatches = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +221,11 @@ class HomeScreen extends StatelessWidget {
 
                     const SizedBox(height: 48),
 
+                    // Section des matchs actifs (pour les joueurs non-admin)
+                    if (!isAdmin) _buildActiveMatchesSection(),
+
+                    const SizedBox(height: 48),
+
                     // Menu des actions
                     LayoutBuilder(
                       builder: (context, constraints) {
@@ -200,11 +243,11 @@ class HomeScreen extends StatelessWidget {
                           children: [
                             _buildMenuCard(
                               context,
-                              icon: Icons.sports_esports,
-                              title: 'Rejoindre Duel',
-                              subtitle: 'Affronter un adversaire',
+                              icon: Icons.refresh,
+                              title: 'Actualiser Duels',
+                              subtitle: 'Rechercher nouveaux matchs',
                               color: const Color(0xFF3B82F6),
-                              onTap: () => _showArenaSelection(context),
+                              onTap: () => _loadPlayerMatches(),
                             ),
                             _buildMenuCard(
                               context,
@@ -212,7 +255,15 @@ class HomeScreen extends StatelessWidget {
                               title: 'Entraînement',
                               subtitle: 'Perfectionner vos sorts',
                               color: const Color(0xFF10B981),
-                              onTap: () => context.push('/duel/demo/user123'),
+                              onTap: () => context.push('/duel/training/solo'),
+                            ),
+                            _buildMenuCard(
+                              context,
+                              icon: Icons.emoji_events,
+                              title: '🏆 Tournois',
+                              subtitle: 'Rejoindre des compétitions',
+                              color: const Color(0xFF9333EA),
+                              onTap: () => context.push('/tournaments'),
                             ),
                             _buildMenuCard(
                               context,
@@ -221,6 +272,14 @@ class HomeScreen extends StatelessWidget {
                               subtitle: 'Vos performances',
                               color: const Color(0xFF8B5CF6),
                               onTap: () => context.push(AppConstants.profileRoute),
+                            ),
+                            _buildMenuCard(
+                              context,
+                              icon: Icons.leaderboard,
+                              title: 'Classement',
+                              subtitle: 'Meilleurs joueurs',
+                              color: const Color(0xFFF59E0B),
+                              onTap: () => context.push('/leaderboard'),
                             ),
                             if (isAdmin)
                               _buildMenuCard(
@@ -369,23 +428,272 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _showArenaSelection(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Sélectionner une Arène'),
-          content: const Text('Fonctionnalité en cours de développement'),
-          actions: [
-            TextButton(
-              child: const Text('Fermer'),
-              onPressed: () => Navigator.of(context).pop(),
+  Widget _buildActiveMatchesSection() {
+    return Container(
+      padding: const EdgeInsets.all(32.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
+            blurRadius: 32,
+            offset: const Offset(0, 16),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.sports_kabaddi,
+                  color: Color(0xFFEF4444),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '⚔️ Vos Duels',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Matchs en attente et en cours',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_isLoadingMatches)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _loadPlayerMatches,
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          if (_isLoadingMatches)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_playerMatches.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.inbox_outlined,
+                    size: 48,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Aucun duel en cours',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Patientez qu\'un Game Master vous assigne un match',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            )
+          else
+            Column(
+              children: _playerMatches.map((match) => _buildMatchCard(match)).toList(),
             ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
+
+  Widget _buildMatchCard(MatchModel match) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Statut du match
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getMatchStatusColor(match.status).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _getMatchStatusText(match.status),
+                  style: TextStyle(
+                    color: _getMatchStatusColor(match.status),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Best of ${match.roundsToWin}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Informations du match
+          FutureBuilder<String>(
+            future: _getOpponentName(match),
+            builder: (context, snapshot) {
+              final opponentName = snapshot.data ?? 'Chargement...';
+              
+              return Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Adversaire',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          opponentName,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => _joinMatch(match),
+                    icon: const Icon(Icons.play_arrow, size: 18),
+                    label: const Text('Rejoindre'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String> _getOpponentName(MatchModel match) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final currentUserId = authProvider.userProfile?.id;
+      
+      // Déterminer l'adversaire
+      final opponentRef = match.player1.id == currentUserId 
+          ? match.player2 
+          : match.player1;
+      
+      return await ArenaService.getUserNameFromRef(opponentRef);
+    } catch (e) {
+      return 'Erreur';
+    }
+  }
+
+  Color _getMatchStatusColor(MatchStatus status) {
+    switch (status) {
+      case MatchStatus.pending:
+        return const Color(0xFFF59E0B);
+      case MatchStatus.inProgress:
+        return const Color(0xFF10B981);
+      case MatchStatus.finished:
+        return const Color(0xFF6B7280);
+    }
+  }
+
+  String _getMatchStatusText(MatchStatus status) {
+    switch (status) {
+      case MatchStatus.pending:
+        return 'En attente';
+      case MatchStatus.inProgress:
+        return 'En cours';
+      case MatchStatus.finished:
+        return 'Terminé';
+    }
+  }
+
+  void _joinMatch(MatchModel match) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = authProvider.userProfile?.id;
+    
+    if (currentUserId == null) return;
+
+    // Naviguer vers l'écran de duel avec les boons paramètres
+    context.push('/duel/${match.id}/$currentUserId');
+  }
+
+
 
   void _handleLogout(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);

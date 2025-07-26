@@ -1,0 +1,9 @@
+🖱️ SONS D'INTERFACE - Magic Wand Battle
+
+Placez ici les fichiers audio de l'interface :
+
+🔘 button_click.mp3 - Son de clic de bouton
+📢 notification.mp3 - Son de notification
+✨ whoosh.mp3 - Son de transition fluide
+
+Format recommandé : MP3, durée courte (0.2-1 seconde) 

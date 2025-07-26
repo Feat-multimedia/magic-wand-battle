@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:sensors_plus/sensors_plus.dart';
 import '../models/spell_model.dart';
 
+import '../utils/logger.dart';
+
 /// Service de reconnaissance gestuelle basé sur les patterns géométriques
 class GesturePatternService {
   static StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
@@ -41,8 +43,8 @@ class GesturePatternService {
     _accelerometerReadings.clear();
     _gyroscopeReadings.clear();
 
-    print('🎬 Démarrage enregistrement avec détection temps réel');
-    print('🔬 DEBUG: Vérification fréquence de capture...');
+    Logger.debug('🎬 Démarrage enregistrement avec détection temps réel');
+    Logger.debug('🔬 DEBUG: Vérification fréquence de capture...');
 
     // CAPTEURS HAUTE FRÉQUENCE - MOUVEMENT COMPLET 3D !
     // Forcer la fréquence à 100Hz pour iOS
@@ -87,7 +89,7 @@ class GesturePatternService {
     // Timer de sécurité seulement (pour éviter enregistrements infinis)
     Timer(Duration(milliseconds: maxDurationMs), () {
       if (_isRecording) {
-        print('⏰ Sécurité - Arrêt après ${maxDurationMs}ms (limite système)');
+        Logger.debug('⏰ Sécurité - Arrêt après ${maxDurationMs}ms (limite système)');
         _finishRecording();
       }
     });
@@ -120,7 +122,7 @@ class GesturePatternService {
     // Arrêt automatique après 1.5 secondes si mouvement stable
     if (currentDuration >= 1500) {
       if (_isMovementStable()) {
-        print('✅ Mouvement stable détecté ! Arrêt automatique.');
+        Logger.success(' Mouvement stable détecté ! Arrêt automatique.', tag: LogTags.firebase);
         _finishRecording();
         return;
       }
@@ -128,7 +130,7 @@ class GesturePatternService {
 
     // Arrêt forcé après 3 secondes maximum
     if (currentDuration >= MAX_RECORDING_DURATION) {
-      print('⏰ Durée maximum atteinte - Arrêt automatique.');
+      Logger.debug('⏰ Durée maximum atteinte - Arrêt automatique.');
       _finishRecording();
     }
   }
@@ -165,7 +167,7 @@ class GesturePatternService {
     final isStable = variance < STABILITY_THRESHOLD;
     
     if (isStable) {
-      print('📊 Mouvement stable détecté (variance: ${variance.toStringAsFixed(3)})');
+      Logger.info(' Mouvement stable détecté (variance: ${variance.toStringAsFixed(3)})', tag: LogTags.stats);
     }
     
     return isStable;
@@ -200,11 +202,11 @@ class GesturePatternService {
     final accelFreq = _accelerometerReadings.length / (duration / 1000.0);
     final gyroFreq = _gyroscopeReadings.length / (duration / 1000.0);
     
-    print('🎯 Geste enregistré: ${_accelerometerReadings.length} points accelerometer, ${_gyroscopeReadings.length} points gyroscope');
-    print('📈 Fréquences: Accel=${accelFreq.toStringAsFixed(1)}Hz, Gyro=${gyroFreq.toStringAsFixed(1)}Hz, Durée=${duration}ms');
+    Logger.debug('🎯 Geste enregistré: ${_accelerometerReadings.length} points accelerometer, ${_gyroscopeReadings.length} points gyroscope');
+    Logger.debug('📈 Fréquences: Accel=${accelFreq.toStringAsFixed(1)}Hz, Gyro=${gyroFreq.toStringAsFixed(1)}Hz, Durée=${duration}ms');
     
     if (accelFreq < 20) {
-      print('⚠️  PROBLÈME: Fréquence accelerometer trop faible ! Attendu: 50-100Hz');
+      Logger.warning('  PROBLÈME: Fréquence accelerometer trop faible ! Attendu: 50-100Hz');
     }
     
     _onGestureRecorded?.call(gestureData);
@@ -214,25 +216,25 @@ class GesturePatternService {
 
   /// Comparer deux gestes : mouvement enregistré vs mouvement à reproduire
   static double compareGestures(GestureData recorded, GestureData target) {
-    print('\n🔍 === COMPARAISON MOUVEMENT ===');
-    print('📊 User: ${recorded.accelerometerReadings.length} points, ${recorded.duration}ms');
-    print('📊 Original: ${target.accelerometerReadings.length} points, ${target.duration}ms');
+    Logger.debug('\n🔍 === COMPARAISON MOUVEMENT ===');
+    Logger.info(' User: ${recorded.accelerometerReadings.length} points, ${recorded.duration}ms', tag: LogTags.stats);
+    Logger.info(' Original: ${target.accelerometerReadings.length} points, ${target.duration}ms', tag: LogTags.stats);
 
     if (recorded.accelerometerReadings.isEmpty || target.accelerometerReadings.isEmpty) {
-      print('❌ Données vides');
+      Logger.error(' Données vides');
       return 0.0;
     }
 
     // 1. GARDER TOUTES LES DONNÉES CAPTEURS ! Pas de perte stupide !
-    print('🔍 Données brutes: User ${recorded.accelerometerReadings.length} points, Original ${target.accelerometerReadings.length} points');
+    Logger.debug('🔍 Données brutes: User ${recorded.accelerometerReadings.length} points, Original ${target.accelerometerReadings.length} points');
     
     final userTrajectory = _extractTrajectory(recorded.accelerometerReadings);
     final originalTrajectory = _extractTrajectory(target.accelerometerReadings);
 
-    print('🔍 Après extraction: User ${userTrajectory.length} points, Original ${originalTrajectory.length} points');
+    Logger.debug('🔍 Après extraction: User ${userTrajectory.length} points, Original ${originalTrajectory.length} points');
 
     if (userTrajectory.length < 2 || originalTrajectory.length < 2) {
-      print('❌ Trajectoires trop courtes après extraction !');
+      Logger.error(' Trajectoires trop courtes après extraction !');
       return 0.0;
     }
 
@@ -240,9 +242,9 @@ class GesturePatternService {
     final normalizedUser = _normalizeTrajectory(userTrajectory);
     final normalizedOriginal = _normalizeTrajectory(originalTrajectory);
     
-    print('🔍 Après normalisation: User ${normalizedUser.length} points, Original ${normalizedOriginal.length} points');
+    Logger.debug('🔍 Après normalisation: User ${normalizedUser.length} points, Original ${normalizedOriginal.length} points');
 
-    print('📐 Trajectoires: ${normalizedUser.length} vs ${normalizedOriginal.length} points');
+    Logger.debug('📐 Trajectoires: ${normalizedUser.length} vs ${normalizedOriginal.length} points');
 
     // 3. COMPARAISON COMPLÈTE 3D + ROTATIONS
     
@@ -258,7 +260,7 @@ class GesturePatternService {
     // D. Similarité temporelle 
     final timingSimilarity = _compareTimingCharacteristics(recorded, target);
 
-    print('🎯 3D: ${(trajectorySimilarity * 100).toStringAsFixed(1)}% | Rotation: ${(rotationSimilarity * 100).toStringAsFixed(1)}% | Motion: ${(motionSimilarity * 100).toStringAsFixed(1)}% | Timing: ${(timingSimilarity * 100).toStringAsFixed(1)}%');
+    Logger.debug('🎯 3D: ${(trajectorySimilarity * 100).toStringAsFixed(1)}% | Rotation: ${(rotationSimilarity * 100).toStringAsFixed(1)}% | Motion: ${(motionSimilarity * 100).toStringAsFixed(1)}% | Timing: ${(timingSimilarity * 100).toStringAsFixed(1)}%');
 
     // 4. Score final - MOUVEMENT COMPLET 3D + ROTATIONS
     final finalScore = (
@@ -268,7 +270,7 @@ class GesturePatternService {
       timingSimilarity * 0.10        // 10% - Timing
     ).clamp(0.0, 1.0);
 
-    print('🏆 Score final: ${(finalScore * 100).toStringAsFixed(1)}%');
+    Logger.game(' Score final: ${(finalScore * 100).toStringAsFixed(1)}%', tag: LogTags.match);
     
     return finalScore;
   }
@@ -278,19 +280,19 @@ class GesturePatternService {
     if (userTrajectory.isEmpty || originalTrajectory.isEmpty) return 0.0;
 
     // Le problème est EN AMONT ! Pourquoi seulement 8 points ?!
-    print('🔍 AVANT traitement: User ${userTrajectory.length} points, Original ${originalTrajectory.length} points');
+    Logger.debug('🔍 AVANT traitement: User ${userTrajectory.length} points, Original ${originalTrajectory.length} points');
     
     // CORRECTION : Utiliser le minimum de points pour éviter l'erreur
     final minPoints = min(userTrajectory.length, originalTrajectory.length);
     final standardSize = max(3, minPoints); // Au moins 3 points, sinon on prend ce qu'on a
     
-    print('📏 Standardisation à ${standardSize} points (min des 2 trajectoires)');
+    Logger.debug('📏 Standardisation à ${standardSize} points (min des 2 trajectoires)');
     
     final resampledUser = _resampleTrajectory(userTrajectory, standardSize);
     final resampledOriginal = _resampleTrajectory(originalTrajectory, standardSize);
 
     if (resampledUser.length != standardSize || resampledOriginal.length != standardSize) {
-      print('❌ ERREUR CRITIQUE rééchantillonnage: ${resampledUser.length} vs ${resampledOriginal.length} (attendu: ${standardSize})');
+      Logger.error(' ERREUR CRITIQUE rééchantillonnage: ${resampledUser.length} vs ${resampledOriginal.length} (attendu: ${standardSize})');
       // FALLBACK : Utiliser les trajectoires telles quelles
       final finalUser = userTrajectory.length <= originalTrajectory.length ? userTrajectory : userTrajectory.take(originalTrajectory.length).toList();
       final finalOriginal = originalTrajectory.length <= userTrajectory.length ? originalTrajectory : originalTrajectory.take(userTrajectory.length).toList();
@@ -317,11 +319,11 @@ class GesturePatternService {
       // 3. COMPARAISON DE SÉQUENCE TEMPORELLE
       sequenceSimilarity = _compareSequenceOrder(resampledUser, resampledOriginal);
     } catch (e) {
-      print('⚠️ Erreur calcul direction/séquence: $e');
+      Logger.warning(' Erreur calcul direction/séquence: $e');
       // Utiliser les valeurs par défaut ci-dessus
     }
 
-    print('🎯 Forme: ${(shapeSimilarity * 100).toStringAsFixed(1)}% | Direction: ${(directionSimilarity * 100).toStringAsFixed(1)}% | Séquence: ${(sequenceSimilarity * 100).toStringAsFixed(1)}%');
+    Logger.debug('🎯 Forme: ${(shapeSimilarity * 100).toStringAsFixed(1)}% | Direction: ${(directionSimilarity * 100).toStringAsFixed(1)}% | Séquence: ${(sequenceSimilarity * 100).toStringAsFixed(1)}%');
 
     // Score final : Forme prioritaire pour debug
     final finalSimilarity = (
@@ -337,7 +339,7 @@ class GesturePatternService {
   static double _compareTrajectoryShapesFallback(List<Point3D> traj1, List<Point3D> traj2) {
     if (traj1.isEmpty || traj2.isEmpty) return 0.0;
     
-    print('🆘 FALLBACK: Comparaison directe ${traj1.length} vs ${traj2.length} points');
+    Logger.debug('🆘 FALLBACK: Comparaison directe ${traj1.length} vs ${traj2.length} points');
     
     // Comparaison point à point simple
     final minLength = min(traj1.length, traj2.length);
@@ -350,7 +352,7 @@ class GesturePatternService {
     final avgDistance = totalDistance / minLength;
     final similarity = max(0.0, 1.0 - (avgDistance * 1.0));
     
-    print('🆘 FALLBACK Similarité: ${(similarity * 100).toStringAsFixed(1)}%');
+    Logger.debug('🆘 FALLBACK Similarité: ${(similarity * 100).toStringAsFixed(1)}%');
     
     return similarity;
   }
@@ -431,7 +433,7 @@ class GesturePatternService {
 
   /// CRITIQUE : Comparer les directions de mouvement
   static double _compareDirections(MovementDirection dir1, MovementDirection dir2) {
-    print('🧭 Directions: "${dir1.type}" vs "${dir2.type}"');
+    Logger.debug('🧭 Directions: "${dir1.type}" vs "${dir2.type}"');
     
     // Si types identiques = excellent
     if (dir1.type == dir2.type) {
@@ -442,7 +444,7 @@ class GesturePatternService {
     // DIRECTIONS OPPOSÉES = ÉCHEC TOTAL !!!
     if ((dir1.type == 'clockwise' && dir2.type == 'counterclockwise') ||
         (dir1.type == 'counterclockwise' && dir2.type == 'clockwise')) {
-      print('❌ DIRECTIONS OPPOSÉES DÉTECTÉES !');
+      Logger.error(' DIRECTIONS OPPOSÉES DÉTECTÉES !');
       return 0.0; // ÉCHEC TOTAL
     }
     
@@ -624,7 +626,7 @@ class GesturePatternService {
     
     // Vérifier que stepSize est valide (pas NaN ou infini)
     if (!stepSize.isFinite || stepSize <= 0) {
-      print('⚠️ stepSize invalide: $stepSize, utilisation linéaire');
+      Logger.warning(' stepSize invalide: $stepSize, utilisation linéaire');
       // Fallback: distribution linéaire simple
       for (int i = 0; i < targetSize; i++) {
         final ratio = i / (targetSize - 1);
@@ -637,7 +639,7 @@ class GesturePatternService {
     for (int i = 0; i < targetSize; i++) {
       final exactIndex = i * stepSize;
       if (!exactIndex.isFinite) {
-        print('⚠️ Index invalide: $exactIndex, utilisation fallback');
+        Logger.warning(' Index invalide: $exactIndex, utilisation fallback');
         resampled.add(profile[i.clamp(0, profile.length - 1)]);
         continue;
       }
@@ -679,11 +681,11 @@ class GesturePatternService {
   /// NOUVEAU : Comparer les rotations (gyroscope) - ESSENTIEL pour mouvements 3D complets
   static double _compareRotations(GestureData user, GestureData original) {
     if (user.gyroscopeReadings.isEmpty || original.gyroscopeReadings.isEmpty) {
-      print('⚠️ Pas de données gyroscope - rotation ignorée');
+      Logger.warning(' Pas de données gyroscope - rotation ignorée');
       return 0.5; // Neutre si pas de données rotation
     }
 
-    print('🌀 Comparaison rotations: ${user.gyroscopeReadings.length} vs ${original.gyroscopeReadings.length} points');
+    Logger.debug('🌀 Comparaison rotations: ${user.gyroscopeReadings.length} vs ${original.gyroscopeReadings.length} points');
 
     // 1. Profils de rotation pour chaque axe
     final userRotX = user.gyroscopeReadings.map((r) => r.x).toList();
@@ -713,7 +715,7 @@ class GesturePatternService {
       rotationRatio * 0.1      // 10% - Intensité totale
     ).clamp(0.0, 1.0);
 
-    print('🌀 Rotations X:${(similarityX*100).toStringAsFixed(1)}% Y:${(similarityY*100).toStringAsFixed(1)}% Z:${(similarityZ*100).toStringAsFixed(1)}% Total:${(rotationRatio*100).toStringAsFixed(1)}%');
+    Logger.debug('🌀 Rotations X:${(similarityX*100).toStringAsFixed(1)}% Y:${(similarityY*100).toStringAsFixed(1)}% Z:${(similarityZ*100).toStringAsFixed(1)}% Total:${(rotationRatio*100).toStringAsFixed(1)}%');
 
     return rotationSimilarity;
   }
@@ -735,7 +737,7 @@ class GesturePatternService {
   static List<Point3D> _extractTrajectory(List<AccelerometerReading> readings) {
     if (readings.isEmpty) return [];
 
-    print('🔧 Extraction trajectoire depuis ${readings.length} points accelerometer');
+    Logger.debug('🔧 Extraction trajectoire depuis ${readings.length} points accelerometer');
 
     // APPROCHE DIRECTE : Accumulation des mouvements sans intégration foireuse
     final trajectory = <Point3D>[];
@@ -751,7 +753,7 @@ class GesturePatternService {
     avgGravY /= readings.length;
     avgGravZ /= readings.length;
     
-    print('🌍 Gravité moyenne détectée: X:${avgGravX.toStringAsFixed(2)} Y:${avgGravY.toStringAsFixed(2)} Z:${avgGravZ.toStringAsFixed(2)}');
+    Logger.debug('🌍 Gravité moyenne détectée: X:${avgGravX.toStringAsFixed(2)} Y:${avgGravY.toStringAsFixed(2)} Z:${avgGravZ.toStringAsFixed(2)}');
 
     // Construire la trajectoire en accumulant les mouvements significatifs
     double cumX = 0, cumY = 0, cumZ = 0;
@@ -774,12 +776,12 @@ class GesturePatternService {
       trajectory.add(Point3D(cumX, cumY, cumZ));
     }
 
-    print('🎯 Trajectoire extraite: ${trajectory.length} points');
+    Logger.debug('🎯 Trajectoire extraite: ${trajectory.length} points');
     if (trajectory.isNotEmpty) {
       final first = trajectory.first;
       final last = trajectory.last;
-      print('🎯 Début: (${first.x.toStringAsFixed(2)}, ${first.y.toStringAsFixed(2)}, ${first.z.toStringAsFixed(2)})');
-      print('🎯 Fin: (${last.x.toStringAsFixed(2)}, ${last.y.toStringAsFixed(2)}, ${last.z.toStringAsFixed(2)})');
+      Logger.debug('🎯 Début: (${first.x.toStringAsFixed(2)}, ${first.y.toStringAsFixed(2)}, ${first.z.toStringAsFixed(2)})');
+      Logger.debug('🎯 Fin: (${last.x.toStringAsFixed(2)}, ${last.y.toStringAsFixed(2)}, ${last.z.toStringAsFixed(2)})');
     }
 
     return trajectory;
@@ -845,7 +847,7 @@ class GesturePatternService {
   /// PLUS DE SIMPLIFICATION DÉBILE ! On garde TOUS les points !
   static List<Point3D> _simplifyTrajectory(List<Point3D> trajectory) {
     // FINI la simplification qui détruit tout ! On garde la richesse des capteurs !
-    print('🔍 Simplification désactivée - on garde ${trajectory.length} points intacts');
+    Logger.debug('🔍 Simplification désactivée - on garde ${trajectory.length} points intacts');
     return List.from(trajectory); // Copie sans modification
   }
 

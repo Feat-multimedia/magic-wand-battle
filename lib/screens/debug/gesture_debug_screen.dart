@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:math';
 import '../../models/spell_model.dart';
 import '../../services/gesture_service.dart';
+import '../../utils/logger.dart';
 
 class GestureDebugScreen extends StatefulWidget {
   const GestureDebugScreen({super.key});
@@ -36,7 +37,7 @@ class _GestureDebugScreenState extends State<GestureDebugScreen> {
           _isRecording = false;
           _referencePath = List.from(_currentPath);
         });
-        print('📊 Référence enregistrée: ${_referencePath.length} points visuels');
+        Logger.info(' Référence enregistrée: ${_referencePath.length} points visuels', tag: LogTags.stats);
       },
       onRecordingProgress: (progress) {
         // Le progrès est maintenant en pourcentage (0-100)
@@ -72,8 +73,8 @@ class _GestureDebugScreenState extends State<GestureDebugScreen> {
       onGestureRecorded: (testGesture) {
         final similarity = GestureService.compareGestures(testGesture, _recordedGesture!);
         
-        print('🎯 Test terminé: ${_currentPath.length} points visuels');
-        print('🔍 Similarité: ${(similarity * 100).toStringAsFixed(1)}%');
+        Logger.debug('🎯 Test terminé: ${_currentPath.length} points visuels');
+        Logger.debug('🔍 Similarité: ${(similarity * 100).toStringAsFixed(1)}%');
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

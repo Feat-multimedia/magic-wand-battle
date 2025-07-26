@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:sensors_plus/sensors_plus.dart';
 import '../models/spell_model.dart';
 
+import '../utils/logger.dart';
+
 class GestureService {
   static StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   static StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
@@ -69,7 +71,7 @@ class GestureService {
         }
       },
       onError: (error) {
-        print('Erreur accéléromètre: $error');
+        Logger.debug('Erreur accéléromètre: $error');
       },
     );
 
@@ -86,7 +88,7 @@ class GestureService {
         }
       },
       onError: (error) {
-        print('Erreur gyroscope: $error');
+        Logger.debug('Erreur gyroscope: $error');
       },
     );
 
@@ -140,7 +142,7 @@ class GestureService {
     
     final threshold = _calculateThreshold();
 
-    print('📊 Geste enregistré: ${_accelerometerReadings.length} points accél, ${_gyroscopeReadings.length} points gyro');
+    Logger.info(' Geste enregistré: ${_accelerometerReadings.length} points accél, ${_gyroscopeReadings.length} points gyro', tag: LogTags.stats);
 
     // Créer les données gestuelles
     final gestureData = GestureData(
@@ -277,7 +279,7 @@ class GestureService {
     // Convertir en pourcentage de similarité (plus la différence est faible, plus la similarité est élevée)
     final averageDifference = totalDifference / (minLength * 3);
     // 🔧 ULTRA tolérant : diviser par 50 pour commencer
-    print('  📊 Différence moyenne accéléromètre: ${averageDifference.toStringAsFixed(2)}');
+    Logger.debug('  📊 Différence moyenne accéléromètre: ${averageDifference.toStringAsFixed(2)}');
     return max(0.0, 1.0 - (averageDifference / 50.0));
   }
 
@@ -301,7 +303,7 @@ class GestureService {
 
     final averageDifference = totalDifference / (minLength * 3);
     // 🔧 ULTRA tolérant : diviser par 25 pour le gyroscope aussi
-    print('  📊 Différence moyenne gyroscope: ${averageDifference.toStringAsFixed(2)}');
+    Logger.debug('  📊 Différence moyenne gyroscope: ${averageDifference.toStringAsFixed(2)}');
     return max(0.0, 1.0 - (averageDifference / 25.0));
   }
 

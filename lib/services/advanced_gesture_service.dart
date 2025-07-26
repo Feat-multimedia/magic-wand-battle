@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:sensors_plus/sensors_plus.dart';
 import '../models/spell_model.dart';
 
+import '../utils/logger.dart';
+
 /// Service avancé de reconnaissance gestuelle basé sur l'analyse de signaux
 class AdvancedGestureService {
   static StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
@@ -123,7 +125,7 @@ class AdvancedGestureService {
     // Créer la signature gestuelle
     final signature = _createGestureSignature();
     
-    print('📊 Signature créée: ${signature.accelerometerFeatures.length} features accél, ${signature.gyroscopeFeatures.length} features gyro');
+    Logger.info(' Signature créée: ${signature.accelerometerFeatures.length} features accél, ${signature.gyroscopeFeatures.length} features gyro', tag: LogTags.stats);
     
     // Notifier la fin de l'enregistrement
     _onGestureRecorded?.call(signature);
@@ -287,11 +289,11 @@ class AdvancedGestureService {
                       (peakSimilarity * peakWeight) + 
                       (energySimilarity * energyWeight);
     
-    print('🔍 Comparaison détaillée:');
-    print('   Features: ${(featureSimilarity * 100).toStringAsFixed(1)}%');
-    print('   Pics: ${(peakSimilarity * 100).toStringAsFixed(1)}%');
-    print('   Énergie: ${(energySimilarity * 100).toStringAsFixed(1)}%');
-    print('   Score final: ${(finalScore * 100).toStringAsFixed(1)}%');
+    Logger.debug('🔍 Comparaison détaillée:');
+    Logger.debug('   Features: ${(featureSimilarity * 100).toStringAsFixed(1)}%');
+    Logger.debug('   Pics: ${(peakSimilarity * 100).toStringAsFixed(1)}%');
+    Logger.debug('   Énergie: ${(energySimilarity * 100).toStringAsFixed(1)}%');
+    Logger.debug('   Score final: ${(finalScore * 100).toStringAsFixed(1)}%');
     
     return finalScore;
   }

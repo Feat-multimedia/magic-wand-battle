@@ -1,7 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../utils/logger.dart';
 
-class LoadingScreen extends StatelessWidget {
+class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
+
+  @override
+  State<LoadingScreen> createState() => _LoadingScreenState();
+}
+
+class _LoadingScreenState extends State<LoadingScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthState();
+  }
+
+  Future<void> _checkAuthState() async {
+    try {
+      // Attendre un petit délai pour l'animation de chargement
+      await Future.delayed(const Duration(milliseconds: 1500));
+      
+      if (!mounted) return;
+
+      // Obtenir l'AuthProvider
+      final authProvider = context.read<AuthProvider>();
+      
+      // Attendre que l'AuthProvider soit initialisé
+      while (!authProvider.isInitialized && mounted) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      
+      if (!mounted) return;
+
+      // Vérifier l'état d'authentification
+      if (authProvider.isAuthenticated) {
+        // Utilisateur connecté
+        if (mounted) {
+          context.go('/home');
+        }
+      } else {
+        // Utilisateur non connecté
+        if (mounted) {
+          context.go('/login');
+        }
+      }
+    } catch (e) {
+      Logger.error('Erreur lors de la vérification d\'authentification', error: e);
+      // En cas d'erreur, rediriger vers login
+      if (mounted) {
+        context.go('/login');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

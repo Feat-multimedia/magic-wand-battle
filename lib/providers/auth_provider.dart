@@ -104,21 +104,31 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Mettre à jour le profil utilisateur
-  Future<bool> updateUserProfile(UserModel updatedProfile) async {
+  Future<bool> updateUserProfile({
+    String? displayName,
+    String? photoURL,
+  }) async {
     return _executeAuthOperation(() async {
-      await AuthService.updateUserProfile(updatedProfile);
-      _userProfile = updatedProfile;
-      return true;
+      final success = await AuthService.updateUserProfile(
+        displayName: displayName,
+        photoURL: photoURL,
+      );
+      
+      if (success) {
+        // Recharger le profil pour avoir les données à jour
+        await _loadUserProfile();
+      }
+      
+      return success;
     });
   }
 
   /// Rafraîchir le profil utilisateur
   Future<void> refreshUserProfile() async {
-    if (!isAuthenticated) return;
-    
-    _setLoading(true);
-    await _loadUserProfile();
-    _setLoading(false);
+    if (_firebaseUser != null) {
+      await _loadUserProfile();
+      notifyListeners();
+    }
   }
 
   /// Exécuter une opération d'authentification avec gestion d'état
